@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="author" content="Mehdi Touyserkani - Aug 2024">
+    <title>Time Series Analysis with GRU Model</title>
+</head>
+<body>
+    <style>
+
+        body , html{
+            margin:0px;
+            min-height: 100%;
+            height: 100%;
+            width: 100%;
+            overflow: hidden;
+            color:white;
+        }
+        #main_container{
+            width: 100%;
+            height: 100%;
+            min-height: 100%;
+            display: flex;
+            flex-wrap: nowrap;
+        }
+
+        #right_container{
+            flex: 80%;
+            height: 100%;
+            color:white;
+        }
+
+        #left_container{
+            flex: 17%;
+            height: 100%;
+            padding-left: 20px;
+            background-color: dodgerblue;
+        }
+
+        input[type="text"]{
+            display: none;
+        }
+
+        #start , #choose{
+            color:white;
+            background-color: white;
+            color:dodgerblue;
+            padding: 20px;
+            font-size: medium;
+            text-decoration: none;
+            border-radius: 8px;
+        }
+
+        #dataset{
+            display: none;
+        }
+
+        p{
+            color: white;
+            padding-left: 50px;
+            padding-top: 15px;
+        }
+
+        #form{
+            width: 300px;
+            position: relative;
+            top:40%;
+        }
+
+        iframe{
+            width: 99.6%;
+            height: 99.6%;
+            overflow: auto;
+            color:white;
+            padding-left: 20px;
+        }
+
+        #designed_by{
+            position: absolute;
+            bottom: 5px;
+            left: 10px;
+        }
+
+        #designed_by a{
+            text-decoration: none;
+            color:white;
+            cursor:pointer;
+            transition: ease-out 0.4s;
+            -webkit-transition: ease-out 0.4s;
+        }
+
+        #designed_by a:hover{
+            color:navajowhite;
+        }
+
+    </style>
+    <div id="main_container">
+
+        <!--_________Designed By___________-->
+
+        <span id="designed_by">Designe By: <a href="https://ir-bestpro.com"> Mehdi Touyserkani </a></span>
+
+        <!--__________Left Panel___________-->
+
+        <div id="left_container">
+            <form id="form" method="post" action="/Time_Series_Prediction/" target="predict_process" enctype="multipart/form-data">
+                <input type="file" name="dataset" id="dataset"/>
+                <a href="javascript:void(0)" id="choose">Select .csv File</a>
+                <a href="javascript:void(0)" id="start">Start Prediction</a>
+                <p>Maximum File Size : 300 KB</p>
+            </form>  
+        </div>
+
+        <!--__________Right Panel___________-->
+
+        <div id="right_container">
+            <iframe name='predict_process' id="predict_process" frameBorder="0"></iframe>
+        </div>
+
+    </div>
+
+    <script>
+        var start = document.getElementById('start');
+        var form = document.getElementById('form');
+        var choose = document.getElementById('choose');
+
+        start.onclick = () => form.submit();
+        choose.onclick = () => document.getElementById('dataset').click()
+    </script>
+  
+</body>
+</html>

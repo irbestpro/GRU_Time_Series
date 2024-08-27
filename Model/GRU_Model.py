@@ -1,3 +1,12 @@
+'''
+    Written By: Mehdi Touyserkani - Aug 2024.
+    https://ir-bestpro.com.
+    https://www.linkedin.com/in/bestpro-group/
+    https://github.com/irbestpro/
+    ir_bestpro@yahoo.com
+    BESTPRO SOFTWARE ENGINEERING GROUP
+'''
+
 import numpy as np
 import pandas as pd
 from torch.optim import Adam

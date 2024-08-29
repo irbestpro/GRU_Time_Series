@@ -58,7 +58,6 @@ async def Create_GRU_Based_Model(ack : Annotated[str|None , Depends(Upload_Datas
                                 epoch = parameters.EPOCH ,
                                 lag = parameters.LAG , 
                                 train_size = parameters.TRAINING_SIZE , 
-                                test_size = parameters.TEST_SIZE , 
                                 learning_rate = parameters.LEARNING_RATE , 
                                 num_layers = parameters.NUM_OF_LAYERS , 
                                 hidden_size = parameters.HIDDEN_SIZE)

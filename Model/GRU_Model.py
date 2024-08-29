@@ -7,11 +7,12 @@
     BESTPRO SOFTWARE ENGINEERING GROUP
 '''
 
-import numpy as np
-import pandas as pd
+from copy import deepcopy
 from torch.optim import Adam
 import torch
 import torch.nn as nn
+import numpy as np
+import pandas as pd
 import math
 import pickle
 import asyncio
@@ -34,17 +35,15 @@ class Time_Series_Model():
 
     #____________Init Phase________________________
 
-    def __init__(self , DatasetName , * , epoch = 100, lag = 4 , train_size = 0.8 , test_size = 0.2 , learning_rate = 0.0001 , num_layers = 8 , hidden_size = 32):
+    def __init__(self , DatasetName , * , epoch = 100, lag = 4 , train_size = 0.8 , learning_rate = 0.0001 , num_layers = 8 , hidden_size = 32):
         
         self.model = None
         self.DatasetName = DatasetName
         self.Data = pd.read_csv(f'./TempFiles/{self.DatasetName}' , header=0 , skip_blank_lines = True)['count'].to_numpy(dtype = np.float32) # Load the dataset and convert it's data to numpy array
-        #self.Data = pd.read_csv(f'./TempFiles/{self.DatasetName}' , header=0 , skiprows=3 , skip_blank_lines = True)['count'].to_numpy(dtype = np.float32) # Load the dataset and convert it's data to numpy array
         self.Data = self.Data[~np.isnan(self.Data)] # remove nan values
         self.epoch = epoch
         self.lag = lag
         self.train_size = train_size
-        self.test_size = test_size
         self.learning_rate = learning_rate
         self.num_layers = num_layers
         self.hidden_size = hidden_size
@@ -53,7 +52,7 @@ class Time_Series_Model():
 
     async def Predict(self):
         
-        mean_value = self.Data.mean(axis = 0)
+        mean_value = self.Data.mean(axis = 0) # mean value of count feature
         self.Data = self.Data / mean_value # count field normalization
         self.model = GRU_Model(hidden_size = self.hidden_size , num_layers = self.num_layers) # the model object instance
         optimizer = Adam(self.model.parameters() , lr = self.learning_rate) # model optimizer
@@ -67,9 +66,9 @@ class Time_Series_Model():
         for epoch in range(1 , self.epoch):
             temp_loss = 0
             steps = 0
-            for batch in range(0 , math.floor(self.Data.shape[0] * self.train_size - self.lag)): 
-                counts = torch.from_numpy(self.Data[batch :  batch + self.lag]).unsqueeze(1) # get count values at time t - lag 
-                goals = torch.as_tensor(self.Data[batch + 1 : batch + self.lag + 1]) # get goal value at time t
+            for batch in range(0 , math.floor(self.Data.shape[0] * self.train_size - self.lag -1)): 
+                counts = torch.from_numpy(self.Data[batch :  batch + self.lag + 1]).unsqueeze(1) # get count values at time t - lag 
+                goals = torch.as_tensor(self.Data[batch + 1 : batch + 1 + self.lag + 1]) # get goal value at time t
                 out = self.model(counts) # model ouput
                 loss = Loss(out , goals) # loss value at time t
                 temp_loss += loss.item()
@@ -79,33 +78,56 @@ class Time_Series_Model():
                 loss.backward() # backpropagation step
                 optimizer.step() # new optimizer step
         
-        #__________________Test Step_________________________
+        #__________________Evaluation Step_________________________
 
             self.model.eval() # switch to evaluation mode
             with torch.no_grad():
                 test_temp_loss = 0
                 test_steps = 0
-                for batch in range(math.floor(self.Data.shape[0] * self.train_size) - self.lag + 1 , self.Data.shape[0] - self.lag): 
-                    test_series = torch.from_numpy(self.Data[batch :  batch + self.lag]).unsqueeze(1) # get test series
-                    expected = torch.as_tensor(self.Data[batch + 1 : batch + self.lag + 1]) # get expected value at time t
-                
+                for batch in range(math.floor(self.Data.shape[0] * self.train_size) - self.lag , self.Data.shape[0] - self.lag - 1):
+                    test_series = torch.from_numpy(self.Data[batch :  batch + self.lag + 1]).unsqueeze(1) # get test series
+                    expected = torch.as_tensor(self.Data[batch + 1 : batch + 1 + self.lag + 1]) # get expected value at time t
                     predicted = self.model(test_series) # get predicted count at time t
                     test_loss = Loss(predicted , expected) # evaluate the results 
                     test_temp_loss += test_loss.item() 
                     test_steps += 1
 
-                    #yield str([(i.data , j) for i,j in zip(predicted * mean_value , expected * mean_value)])
+                    #[print(i.data , j) for i,j in zip(predicted[-1] * mean_value, expected[-1] * mean_value)]
+                    # print(predicted[-1].data * mean_value, expected[-1] * mean_value)
+                
+                if best_loss_value > (test_temp_loss / test_steps):
+                    best_loss_value = test_temp_loss / test_steps
+                    best_model = deepcopy(self.model)
 
-                best_loss_value , best_model = ((test_temp_loss / test_steps) , self.model) if best_loss_value > (test_temp_loss / test_steps) else (best_loss_value , best_model)
-                pickle.dump(best_model , open (f'./CheckPoints/{self.DatasetName}.mdl' , 'wb'))
                 yield f'Epoch # {epoch} - Train loss : {temp_loss / steps} and Test loss : {test_temp_loss / test_steps} \n '
                 await asyncio.sleep(0.1)
                 
+        #_______________________Final Test____________________________
         
-        yield f'The Optimized Loss value is {best_loss_value} \n'
+        print ('____________Final Test____________')
+        with torch.no_grad():
+                final_temp_loss = 0
+                final_steps = 0
+                for batch in range(math.floor(self.Data.shape[0] * self.train_size) - self.lag , self.Data.shape[0] - self.lag - 1): 
+                    test_series = torch.from_numpy(self.Data[batch :  batch + self.lag + 1]).unsqueeze(1) # get test series
+                    final_expected = torch.as_tensor(self.Data[batch + 1 : batch + 1 + self.lag + 1]) # get expected value at time t
+                
+                    final_predicted = best_model(test_series) # get predicted count at time t
+                    final_test_loss = Loss(final_predicted , final_expected) # evaluate the results 
+                    final_temp_loss += final_test_loss.item() 
+                    final_steps += 1
+
+                    #[print(i.data , j) for i,j in zip(final_predicted[-1] * mean_value , final_expected[-1] * mean_value)]
+                    #print(final_predicted[-1].data * mean_value , final_expected[-1] * mean_value)
+                
+                yield f'The Optimized Loss value is {final_temp_loss / final_steps} \n'
+
+        pickle.dump(best_model , open (f'./CheckPoints/{self.DatasetName}.mdl' , 'wb'))
         yield '____________________________________________________________________________\n\n'
         yield f'The model with the best checkpoint is saved! [ Model-Name:{self.DatasetName}.mdl]'
 
+
+            
 
 
 
